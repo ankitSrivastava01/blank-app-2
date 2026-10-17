@@ -10,22 +10,40 @@ st.set_page_config(page_title="Market Brief", page_icon="📈", layout="wide")
 st.markdown(
     """
     <style>
-    :root { --ink: #263a32; --muted: #68776f; --accent: #6f9c7a; --line: #d9e2dc; }
-    .stApp { background: linear-gradient(135deg, #f4f6f4 0%, #edf3ee 55%, #f7f8f6 100%); color: var(--ink); }
+    :root {
+        --deep: #071923;
+        --teal: #0a3038;
+        --muted: #50797a;
+        --seafoam: #8dbab0;
+        --mist: #cdd4d4;
+    }
+    .stApp { background: linear-gradient(135deg, var(--mist) 0%, var(--seafoam) 100%); color: var(--deep); }
     [data-testid="stHeader"] { background: transparent; }
-    h1, h2, h3 { color: var(--ink); letter-spacing: 0 !important; }
+    h1, h2, h3 { color: var(--deep); letter-spacing: 0 !important; }
     h1 { font-family: Georgia, serif; font-size: 2.65rem; }
-    [data-testid="stMetric"] { background: rgba(248,251,248,.88); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+    [data-testid="stMetric"] { background: var(--mist); border: 1px solid var(--muted); border-radius: 6px; padding: 16px 18px; }
     [data-testid="stMetricLabel"] p { color: var(--muted); }
-    [data-testid="stMetricValue"] { color: var(--ink); }
-    .stButton > button { background: var(--ink); color: white; border: 0; border-radius: 4px; min-height: 42px; }
-    .stButton > button:hover { background: #466b50; color: white; border-color: #466b50; }
-    div[data-baseweb="select"] > div { border-color: var(--line); border-radius: 4px; }
-    .eyebrow { color: var(--accent); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    [data-testid="stMetricValue"] { color: var(--deep); }
+    .stButton > button { background: var(--teal); color: var(--mist); border: 0; border-radius: 4px; min-height: 42px; }
+    .stButton > button:hover { background: var(--muted); color: var(--deep); border-color: var(--muted); }
+    div[data-baseweb="select"] > div {
+        background-color: var(--mist);
+        border-color: var(--muted);
+        border-radius: 4px;
+        color: var(--deep);
+    }
+    div[data-baseweb="select"] input,
+    div[data-baseweb="select"] [role="combobox"] { color: var(--deep); }
+    div[data-baseweb="popover"],
+    div[data-baseweb="popover"] ul,
+    div[data-baseweb="popover"] [role="listbox"] { background-color: var(--mist); }
+    div[data-baseweb="popover"] [role="option"] { background-color: var(--mist); color: var(--deep); }
+    div[data-baseweb="popover"] [role="option"]:hover { background-color: var(--seafoam); color: var(--deep); }
+    .eyebrow { color: var(--teal); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .subtle { color: var(--muted); }
-    .news-item { padding: 13px 0; border-bottom: 1px solid var(--line); }
-    .news-item a { color: var(--ink); font-weight: 650; text-decoration: none; }
-    .news-item a:hover { color: var(--accent); }
+    .news-item { padding: 13px 0; border-bottom: 1px solid var(--muted); }
+    .news-item a { color: var(--deep); font-weight: 650; text-decoration: none; }
+    .news-item a:hover { color: var(--teal); }
     @media (max-width: 640px) { h1 { font-size: 2rem; } }
     </style>
     """,
@@ -122,7 +140,7 @@ left, right = st.columns([1.5, 1], gap="large")
 with left:
     st.subheader("Price history")
     st.caption("Adjusted closing price · past 12 months")
-    st.line_chart(prices.rename("Price (USD)"), color="#78a985", height=310)
+    st.line_chart(prices.rename("Price (USD)"), color="#8dbab0", height=310)
 
 with right:
     st.subheader("Latest headlines")

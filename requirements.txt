@@ -1,1 +1,3 @@
-streamlit>=1.58.0
+streamlit>=1.50.0
+yfinance>=0.2.65
+groq>=0.31.0

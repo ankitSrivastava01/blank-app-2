@@ -1,5 +1,6 @@
 """Streamlit interface for the free Yahoo Finance data source."""
 
+import logging
 import os
 from datetime import datetime, timezone
 
@@ -101,8 +102,14 @@ def render_app():
                 quotes, total, _ = load_stock_page(market, price, sector, stock_type, valuation, page)
                 rows.extend(quotes)
                 totals[market] = total
-            except Exception:
+            except Exception as exc:
                 failures.append(market)
+                response = getattr(exc, "response", None)
+                status_code = getattr(response, "status_code", None)
+                logging.getLogger(__name__).error(
+                    "Yahoo stock screening failed for %s: %s (HTTP status: %s)",
+                    market, type(exc).__name__, status_code or "unavailable",
+                )
                 st.error(f"Could not load {market} stocks from Yahoo Finance. The service may be unavailable or rate limited. Use Refresh market data to retry.")
 
     if failures and totals:

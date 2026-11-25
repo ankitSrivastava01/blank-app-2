@@ -122,9 +122,9 @@ with market_tab:
 with ai_tab:
     st.subheader("AI research briefing")
     st.write("Explore trade-offs, recent headlines and budget considerations across your selected markets.")
-    provider = st.selectbox("AI provider", ["Groq", "OpenAI"])
+    provider = st.selectbox("AI provider", ["Groq", "OpenAI", "Gemini"])
     if st.button("Generate AI briefing", type="primary"):
-        key_name = "OPENAI_API_KEY" if provider == "OpenAI" else "GROQ_API_KEY"
+        key_name = {"Groq": "GROQ_API_KEY", "OpenAI": "OPENAI_API_KEY", "Gemini": "GEMINI_API_KEY"}[provider]
         key = get_key(key_name)
         if not key:
             st.warning(f"Add {key_name} to Streamlit secrets or the environment to generate a briefing.")
@@ -142,6 +142,13 @@ with ai_tab:
                             model="gpt-4.1-mini", instructions=instructions, input=prompt,
                             max_output_tokens=1000, store=False)
                         briefing = response.output_text
+                    elif provider == "Gemini":
+                        from google import genai
+                        response = genai.Client(api_key=key).models.generate_content(
+                            model="gemini-3.8-flash", contents=prompt,
+                            config={"system_instruction": instructions, "max_output_tokens": 1000,
+                                    "http_options": {"timeout": 30000}})
+                        briefing = response.text
                     else:
                         response = Groq(api_key=key, timeout=30).chat.completions.create(
                             model="llama-3.3-70b-versatile", max_tokens=1000, temperature=0.2,

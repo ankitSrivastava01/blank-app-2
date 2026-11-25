@@ -34,6 +34,19 @@ def clear_stock_selection():
     st.session_state.stock_selection = None
 
 
+def yahoo_error_reason(response):
+    """Classify known Yahoo authentication errors without logging response data."""
+    try:
+        description = response.json()["finance"]["error"]["description"].lower()
+    except (AttributeError, KeyError, TypeError, ValueError):
+        return "unknown"
+    if "invalid crumb" in description:
+        return "invalid crumb"
+    if "unable to access this feature" in description:
+        return "access denied by Yahoo"
+    return "unknown"
+
+
 
 def render_factor_section(row, company_name):
     st.subheader(f"{row['Factor']}: {company_name}")
@@ -107,8 +120,9 @@ def render_app():
                 response = getattr(exc, "response", None)
                 status_code = getattr(response, "status_code", None)
                 logging.getLogger(__name__).error(
-                    "Yahoo stock screening failed for %s: %s (HTTP status: %s)",
+                    "Yahoo stock screening failed for %s: %s (HTTP status: %s; reason: %s)",
                     market, type(exc).__name__, status_code or "unavailable",
+                    yahoo_error_reason(response),
                 )
                 st.error(f"Could not load {market} stocks from Yahoo Finance. The service may be unavailable or rate limited. Use Refresh market data to retry.")
 

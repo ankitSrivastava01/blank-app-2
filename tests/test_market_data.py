@@ -1,15 +1,26 @@
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
 from market_data import load_stock_details, load_stock_page, period_return, quote_row, screen_query
 from indicators import company_indicators
+from stock_explorer import yahoo_error_reason
 
 
 class MarketDataTests(unittest.TestCase):
+    def test_yahoo_error_reason_only_reports_known_descriptions(self):
+        response = Mock()
+        response.json.return_value = {"finance": {"error": {"description": "Invalid Crumb"}}}
+        self.assertEqual(yahoo_error_reason(response), "invalid crumb")
+        response.json.return_value = {"finance": {"error": {"description": "User is unable to access this feature"}}}
+        self.assertEqual(yahoo_error_reason(response), "access denied by Yahoo")
+        response.json.return_value = {"finance": {"error": {"description": "sensitive unknown text"}}}
+        self.assertEqual(yahoo_error_reason(response), "unknown")
+        self.assertEqual(yahoo_error_reason(None), "unknown")
+
     def setUp(self):
         load_stock_page.clear()
         load_stock_details.clear()

@@ -1,7 +1,7 @@
 [server]
 headless = true
-enableCORS = false
-enableXsrfProtection = false
+# Load modules once per process. Restart Streamlit after changing source files.
+fileWatcherType = "none"
 
 [client]
 showErrorDetails = false
@@ -11,7 +11,7 @@ level = "info"
 
 [theme]
 base = "dark"
-primaryColor = "#4fd1c5"
-backgroundColor = "#081a2d"
-secondaryBackgroundColor = "#102c43"
-textColor = "#edf7ff"
+primaryColor = "#4ee1b4"
+backgroundColor = "#090f1c"
+secondaryBackgroundColor = "#14223a"
+textColor = "#edf4ff"

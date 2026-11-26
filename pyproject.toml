@@ -1,17 +1,20 @@
 [project]
-name = "blank-app-template"
+name = "investoai"
 version = "0.1.0"
-description = "Company performance, news, and AI-assisted market research."
+description = "Indian equity research, screening, and portfolio tracking."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
-    "streamlit>=1.50.0",
+    "streamlit[auth]>=1.50.0",
     "yfinance>=0.2.65",
     "groq>=0.31.0",
     "openai>=1.0.0",
     "google-genai>=1.0.0",
     "beautifulsoup4>=4.12.0",
     "pypdf>=5.0",
+    "pandas>=2.2",
+    "plotly>=6.0",
+    "tzdata>=2025.1",
 ]
 
 [tool.uv]

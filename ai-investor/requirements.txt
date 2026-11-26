@@ -1,0 +1,6 @@
+streamlit>=1.50.0
+yfinance>=0.2.65
+groq>=0.31.0
+openai>=1.0.0
+beautifulsoup4>=4.12.0
+pypdf>=5.0

@@ -8,6 +8,7 @@ import os
 import re
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 from openai import OpenAI, OpenAIError
 
@@ -141,13 +142,17 @@ def period_comparison(frames):
                                for name, prices in available.items()}))
 
 
-def ranked_stocks():
-    st.header("Stocks ranked by daily price change")
-    filters, details = st.columns([2, 3], gap="large")
+def ranked_stocks(filters, details):
     with filters:
         st.subheader("Filters")
+        view = st.selectbox("Stock list", ["Daily gainers and losers", "Top 12 suggestions"])
+    if view == "Top 12 suggestions":
+        stock_suggestions(filters, details)
+        return
+    with filters:
         stock = ranked_stock_picker()
     with details:
+        st.header("Stocks")
         if stock:
             stock_details(stock)
         else:
@@ -156,8 +161,18 @@ def ranked_stocks():
 
 
 def ranked_stock_picker():
-    minimum = st.number_input("Minimum price (₹)", min_value=0.0)
-    maximum = st.number_input("Maximum price (₹)", min_value=0.0, help="Enter 0 for no upper limit.")
+    price_range = st.selectbox("Price range", ["Any price", "Below ₹100", "₹100 to ₹499", "₹500 to ₹999",
+                                              "₹1,000 and above", "Custom range"])
+    bounds = {"Any price": (0, None), "Below ₹100": (0, 99.99), "₹100 to ₹499": (100, 499.99),
+              "₹500 to ₹999": (500, 999.99), "₹1,000 and above": (1000, None)}
+    if price_range == "Custom range":
+        minimum = st.number_input("Minimum price (₹)", min_value=0.0)
+        maximum = st.number_input("Maximum price (₹)", min_value=0.0, help="Enter 0 for no upper limit.") or None
+    else:
+        minimum, maximum = bounds[price_range]
+    movement = st.selectbox("Daily move", ["All stocks", "Gainers", "Losers", "Unchanged"])
+    moves = {"All stocks": lambda change: True, "Gainers": lambda change: change > 0,
+             "Losers": lambda change: change < 0, "Unchanged": lambda change: change == 0}
     if maximum and maximum < minimum:
         st.error("Maximum price must be at least the minimum price.")
         return
@@ -169,13 +184,15 @@ def ranked_stock_picker():
     stocks = {stock["symbol"]: stock for stock in listings}
     report = feed["data"]
     matches = sorted(((symbol, row) for symbol, row in report["rows"].items()
-                      if symbol in stocks and row["close"] >= minimum and (not maximum or row["close"] <= maximum)),
+                      if symbol in stocks and row["close"] >= minimum and (maximum is None or row["close"] <= maximum)
+                      and moves[movement](row["change"])),
                      key=lambda item: (-item[1]["change"], item[0]))
     st.caption(f"{len(matches):,} NSE stocks · {when(report['date'])} · {source(feed)}")
     if not matches:
         st.info("No stocks match this price range.")
         return
-    picked = st.selectbox("View stock details", [symbol for symbol, _ in matches], index=None,
+    picked = st.selectbox("Select a stock", [symbol for symbol, _ in matches], index=None,
+                          placeholder="Search by company name or symbol",
                           format_func=lambda symbol: f"{symbol} · {stocks[symbol]['name']}")
     table([{"Symbol": symbol, "Closing price": rupees(row["close"]),
             "Daily change": percent(row["change"])} for symbol, row in matches], height=340)
@@ -189,22 +206,40 @@ def stock_page():
         stock_details(stock)
 
 
-def stock_details(stock):
+def stock_details(stock, default_view="Price growth"):
     st.subheader(stock["name"])
     st.caption(" · ".join(filter(None, (stock["exchange"], stock["symbol"], stock.get("isin")))))
     with st.expander("Buy through a broker"):
         st.write(f"Search for {stock['symbol']} on {stock['exchange']} in Kite, then review and confirm the order there.")
         st.link_button("Sign in to Zerodha Kite", "https://kite.zerodha.com/")
-    detail = st.segmented_control("Research view", ["Price growth", "News", "AI guidance", "Company details"],
-                                  default="Price growth")
+    detail = st.segmented_control("Research view", ["Price growth", "Chart", "Company details", "News", "AI guidance"],
+                                  default=default_view)
     if detail == "Price growth":
         growth_table(data.history(stock["ticker"], stock["alias"]))
     elif detail == "Company details":
         fundamental_panel(data.fundamentals(stock["ticker"], stock["alias"]))
+    elif detail == "Chart":
+        stock_price_chart(data.history(stock["ticker"], stock["alias"]))
     elif detail == "News":
         news_content(stock)
     elif detail == "AI guidance":
         ai_suggestions(stock)
+
+
+def stock_price_chart(feed):
+    prices = data.history_frame(feed["data"])
+    if prices.empty:
+        st.info("Price history is unavailable for this stock.")
+        return
+    periods = {"1 month": pd.DateOffset(months=1), "3 months": pd.DateOffset(months=3),
+               "6 months": pd.DateOffset(months=6), "1 year": pd.DateOffset(years=1)}
+    period = st.selectbox("Chart period", list(periods), index=1)
+    prices = prices.loc[prices.index[-1] - periods[period]:]
+    fig = go.Figure(go.Scatter(x=prices.index, y=prices["Close"], mode="lines+markers" if len(prices) == 1 else "lines",
+                               line=dict(color="#4ee1b4", width=2), hovertemplate="₹%{y:,.2f}<extra></extra>"))
+    fig.update_layout(yaxis_title="Closing price (₹)", height=320, margin=dict(l=10, r=12, t=12, b=8))
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.caption(f"{when(prices.index[-1].date().isoformat())} · {source(feed)}")
 
 
 def ai_suggestions(stock):
@@ -365,25 +400,23 @@ def stock_shortlist():
         stock_details(stocks[symbol])
 
 
-def stock_suggestions():
-    st.header("Stock suggestions")
+def stock_suggestions(filters, details):
     membership = data.nifty_members()
     sectors = sorted({row["sector"] for row in membership["data"] or [] if row.get("sector")})
-    filters, details = st.columns([2, 3], gap="large")
     with filters:
-        st.subheader("Filters")
         with st.form("suggestion_filters"):
-            minimum_price = st.number_input("Minimum closing price (₹)", min_value=0.0)
-            maximum_price = st.number_input("Maximum closing price (₹)", min_value=0.0, help="Enter 0 for no limit.")
+            minimum_price = st.selectbox("Minimum closing price (₹)", [0, 50, 100, 250, 500, 1000, 2000, 5000])
+            maximum_price = st.selectbox("Maximum closing price (₹)", [0, 100, 250, 500, 1000, 2000, 5000, 10000],
+                                         format_func=lambda value: f"{value:,}" if value else "No limit")
             selected_sectors = st.multiselect("Sectors", sectors, placeholder="All sectors")
-            maximum_pe = st.number_input("Maximum P/E", min_value=1.0, value=30.0, step=1.0)
-            minimum_growth = st.number_input("Minimum annual profit growth (%)", value=5.0, step=1.0)
+            maximum_pe = st.selectbox("Maximum P/E", [10, 15, 20, 25, 30, 40, 50, 75, 100], index=4)
+            minimum_growth = st.selectbox("Minimum annual profit growth (%)", [0, 5, 10, 15, 20, 30, 50], index=1)
             active = st.multiselect("Additional financial filters", ["Revenue growth (%)", "ROE (%)", "ROCE (%)"])
-            revenue = st.number_input("Minimum annual revenue growth (%)", value=5.0, step=1.0)
-            roe = st.number_input("Minimum ROE (%)", value=10.0, step=1.0)
-            roce = st.number_input("Minimum ROCE (%)", value=10.0, step=1.0)
+            revenue = st.selectbox("Minimum annual revenue growth (%)", [0, 5, 10, 15, 20, 30], index=1)
+            roe = st.selectbox("Minimum ROE (%)", [0, 5, 10, 15, 20, 25, 30], index=2)
+            roce = st.selectbox("Minimum ROCE (%)", [0, 5, 10, 15, 20, 25, 30], index=2)
             run = st.form_submit_button("Find stocks", type="primary")
-        st.caption("Screens NIFTY 50 stocks and ranks qualifying results by annual profit growth. This is a research list.")
+        st.caption("Up to 12 NIFTY 50 matches, ranked by annual profit growth. Select a company for AI research guidance.")
         if run:
             thresholds = {"Revenue growth (%)": revenue, "ROE (%)": roe, "ROCE (%)": roce}
             if maximum_price and minimum_price > maximum_price:
@@ -399,17 +432,21 @@ def stock_suggestions():
             ranked, coverage = saved
             st.caption(coverage)
             if ranked:
-                options = {stock["symbol"]: stock for stock, _ in ranked}
+                options = {stock["symbol"]: stock for stock, _ in ranked[:12]}
                 symbol = st.selectbox("View stock details", list(options), index=None,
                                       format_func=lambda value: stock_label(options[value]))
                 selected = options.get(symbol)
             else:
                 st.info("No stocks matched the filters with the available data.")
     with details:
+        st.header("Stock suggestions")
         if selected:
-            stock_details(selected)
+            row = next(row for stock, row in saved[0] if stock["symbol"] == selected["symbol"])
+            st.write(f"**Why it qualified** · {row['Why it qualified']}")
+            stock_details(selected, default_view="AI guidance")
         elif saved and saved[0]:
-            table([row for _, row in saved[0]])
+            st.subheader("Top 12 suggestions")
+            table([row for _, row in saved[0][:12]])
         else:
             st.info("Run the filters to see matching stocks and explore their details.")
 
@@ -444,6 +481,8 @@ def screen_suggestions(membership, minimum_price, maximum_price, sectors, maximu
             if 0 < pe <= maximum_pe and growth >= minimum_growth and all(
                     metrics[metric] >= minimum for metric, minimum in thresholds.items()):
                 ranked.append((stock, {"Stock": stock["symbol"], "Company": stock["name"],
+                                      "Why it qualified": f"Annual profit grew {growth:+.1f}% and P/E is {pe:.1f}×. "
+                                                          "It passed your price and financial filters.",
                                       "Sector": stock.get("sector"),
                                       "Close (₹)": by_symbol[stock["symbol"]], "P/E": pe,
                                       "Profit growth (%)": growth, **{metric: metrics[metric] for metric in thresholds},

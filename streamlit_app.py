@@ -5,7 +5,6 @@ import sqlite3
 import streamlit as st
 
 import investo_ui as ui
-import investo_workspace as workspace
 
 st.set_page_config(page_title="InvestoAI | Indian equity research", page_icon="📈", layout="wide",
                    initial_sidebar_state="collapsed")
@@ -33,32 +32,37 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
+left, right = st.columns([1, 2], gap="large")
+with left:
+    controls = st.container(border=True)
+with right:
+    content = st.container(border=True)
+
+with controls:
+    st.markdown("""
 <header class="investo-masthead">
     <h1>Investo<span>AI</span></h1>
     <p>Indian equity research · NSE &amp; BSE</p>
 </header>
 """, unsafe_allow_html=True)
-
-PAGES = {
-    "Stocks": ui.ranked_stocks,
-    "Stock shortlist": ui.stock_shortlist,
-    "Stock suggestions": ui.stock_suggestions,
-    "Market overview": ui.dashboard,
-    "Compare": ui.compare,
-    "Calculators": workspace.calculator,
-}
-
-page = st.radio("Navigation", list(PAGES), horizontal=True, label_visibility="collapsed", key="market_page")
+    pages = ["Market overview", "Stocks"]
+    if st.session_state.get("market_page") not in pages:
+        st.session_state.market_page = "Market overview"
+    page = st.radio("Navigation", pages, label_visibility="collapsed", key="market_page")
 
 try:
-    PAGES[page]()
+    if page == "Stocks":
+        ui.ranked_stocks(controls, content)
+    else:
+        with content:
+            ui.dashboard()
 except (OSError, sqlite3.Error):
-    st.error("Workspace storage could not be accessed. Try again in a moment.")
+    content.error("Workspace storage could not be accessed. Try again in a moment.")
 
-st.divider()
-st.caption("Educational research only. Prices are delayed, and investing involves risk. Dates and times are shown in India Standard Time.")
-with st.expander("Investment disclaimer and data sources"):
-    st.write(ui.DISCLAIMER)
-    st.caption("Directories use exchange listings or Upstox. NSE reports cover the NIFTY 50 dashboard. Yahoo Finance supplies chart data and financial metrics. News comes from Google News and the exchange filing feeds.")
-    st.caption("During an outage, available cached snapshots show their original timestamps. Calculations or comparisons requiring missing data will show gaps.")
+with content:
+    st.divider()
+    st.caption("Educational research only. Prices are delayed, and investing involves risk. Dates and times are shown in India Standard Time.")
+    with st.expander("Investment disclaimer and data sources"):
+        st.write(ui.DISCLAIMER)
+        st.caption("Directories use exchange listings or Upstox. NSE reports cover the NIFTY 50 dashboard. Yahoo Finance supplies chart data and financial metrics. News comes from Google News and the exchange filing feeds.")
+        st.caption("During an outage, available cached snapshots show their original timestamps. Calculations or comparisons requiring missing data will show gaps.")

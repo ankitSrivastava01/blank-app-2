@@ -1,0 +1,17 @@
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false
+
+[client]
+showErrorDetails = false
+
+[logger]
+level = "info"
+
+[theme]
+base = "dark"
+primaryColor = "#4fd1c5"
+backgroundColor = "#081a2d"
+secondaryBackgroundColor = "#102c43"
+textColor = "#edf7ff"
